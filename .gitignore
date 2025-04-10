@@ -3,3 +3,9 @@
 .env
 go.mod
 go.sum
+/frontend/node_modules
+/frontend/src/components/ui
+*.json
+
+/frontend/vite.config.ts
+/frontend/eslint.config.js

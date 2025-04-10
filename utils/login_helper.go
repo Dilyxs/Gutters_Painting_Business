@@ -12,8 +12,8 @@ import (
 )
 
 type User struct {
-	Username string `bson:"username"`
-	Password string `bson:"password"`
+	Username string `json:"username" bson:"username"`
+	Password string `json:"password" bson:"password"`
 }
 
 type Client struct {
@@ -40,6 +40,25 @@ func CheckLoginValid(username, password string) bool {
 		return false
 	}
 	return true
+}
+
+func VericationLogin(c *fiber.Ctx) error {
+
+	var credentials User
+	err := c.BodyParser(&credentials)
+
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid request body"})
+	}
+	Correct_or_nah := CheckLoginValid(credentials.Username, credentials.Password)
+
+	if Correct_or_nah {
+		return c.Status(200).JSON(fiber.Map{"success": true})
+	} else {
+		return c.Status(400).JSON(fiber.Map{"success": false})
+
+	}
+
 }
 
 func DashBoard(c *fiber.Ctx) error {
@@ -79,7 +98,7 @@ func UpdateClient(c *fiber.Ctx) error {
 	if body.Name == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "name is required"})
 	}
-	filter := bson.M{"Name": body.Name}
+	filter := bson.M{"Phone": body.Phone}
 	log.Println("Update filter:", filter)
 
 	update := bson.M{
@@ -128,4 +147,38 @@ func IntegrateClient(c *fiber.Ctx) error {
 	}
 
 	return c.Status(201).JSON(body)
+}
+
+func DeleteSingleClient(c *fiber.Ctx) error {
+
+	var payload Client
+	collection := database.Connect("Form")
+
+	// Parse the body
+	if err := c.BodyParser(&payload); err != nil {
+		log.Printf("Error parsing delete payload: %v", err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Invalid request body",
+		})
+	}
+
+	// Attempt deletion
+	res, err := collection.DeleteOne(context.TODO(), bson.M{"Phone": payload.Phone})
+	if err != nil {
+		log.Printf("Error deleting client: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to delete client from database",
+		})
+	}
+
+	if res.DeletedCount == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"message": "No client found with that number",
+		})
+	}
+
+	log.Printf("Client with ID %v successfully deleted", payload.Phone)
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "Client successfully deleted",
+	})
 }
